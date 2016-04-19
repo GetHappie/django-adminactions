@@ -17,13 +17,13 @@ from django.db.models.deletion import Collector
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django.template.context import RequestContext
+from django.utils.module_loading import import_string
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 
 from adminactions.api import (export_as_csv as _export_as_csv,
                               export_as_xls as _export_as_xls,)
 from adminactions.exceptions import ActionInterrupted
-from adminactions.forms import CSVOptions, XLSOptions
 from adminactions.models import get_permission_codename
 from adminactions.signals import (adminaction_end, adminaction_requested,
                                   adminaction_start, django,)
@@ -57,18 +57,15 @@ def base_export(modeladmin, request, queryset, title, impl, name, action_short_d
         messages.error(request, str(e))
         return
 
-    cols = [(f.name, f.verbose_name) for f in queryset.model._meta.fields]
     initial = {'_selected_action': request.POST.getlist(helpers.ACTION_CHECKBOX_NAME),
                'select_across': request.POST.get('select_across') == '1',
-               'action': get_action(request),
-               'columns': [x for x, v in cols]}
+               'action': get_action(request)}
     if initial["action"] == "export_as_csv":
         initial.update(getattr(
             settings, "ADMINACTIONS_CSV_OPTIONS_DEFAULT", {}))
 
     if 'apply' in request.POST:
-        form = form_class(request.POST)
-        form.fields['columns'].choices = cols
+        form = form_class(request.POST, model=queryset.model)
         if form.is_valid():
             try:
                 adminaction_start.send(sender=modeladmin.model,
@@ -102,8 +99,7 @@ def base_export(modeladmin, request, queryset, title, impl, name, action_short_d
                                      form=form)
                 return response
     else:
-        form = form_class(initial=initial)
-        form.fields['columns'].choices = cols
+        form = form_class(initial=initial, model=queryset.model)
 
     adminForm = helpers.AdminForm(form, modeladmin.get_fieldsets(request), {}, [], model_admin=modeladmin)
     media = modeladmin.media + adminForm.media
@@ -138,7 +134,9 @@ def export_as_csv(modeladmin, request, queryset):
                            modeladmin.opts.verbose_name_plural,
                        ),
                        template='adminactions/export_csv.html',
-                       form_class=CSVOptions)
+                       form_class=import_string(getattr(
+                           settings, 'ADMINACTIONS_CSVOPTIONS_FORM',
+                           'adminactions.forms.CSVOptions')))
 
 
 export_as_csv.short_description = _("Export as CSV")
@@ -154,7 +152,9 @@ def export_as_xls(modeladmin, request, queryset):
                            modeladmin.opts.verbose_name_plural,
                        ),
                        template='adminactions/export_xls.html',
-                       form_class=XLSOptions)
+                       form_class=import_string(getattr(
+                           settings, 'ADMINACTIONS_XLSOPTIONS_FORM',
+                           'adminactions.forms.XLSOptions')))
 
 
 export_as_xls.short_description = _("Export as XLS")

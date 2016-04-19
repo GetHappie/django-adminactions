@@ -29,7 +29,18 @@ class GenericActionForm(ModelForm):
                 not (field.name.startswith('_') or field.name in ['select_across', 'action'])]
 
 
-class CSVOptions(forms.Form):
+class BaseOptions(forms.Form):
+
+    def __init__(self, *args, model=None, **kwargs):
+        super(BaseOptions, self).__init__(*args, **kwargs)
+        self.model = model
+        self.fields['columns'].choices = self.get_column_choices()
+
+    def get_column_choices(self):
+        return [(f.name, f.verbose_name) for f in self.model._meta.fields]
+
+
+class CSVOptions(BaseOptions):
     _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
     select_across = forms.BooleanField(label='', required=False, initial=0,
                                        widget=forms.HiddenInput({'class': 'select-across'}))
@@ -51,7 +62,7 @@ class CSVOptions(forms.Form):
     columns = forms.MultipleChoiceField(widget=SelectMultiple(attrs={'size': 20}))
 
 
-class XLSOptions(forms.Form):
+class XLSOptions(BaseOptions):
     _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
     select_across = forms.BooleanField(label='', required=False, initial=0,
                                        widget=forms.HiddenInput({'class': 'select-across'}))
