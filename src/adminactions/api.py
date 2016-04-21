@@ -361,9 +361,8 @@ def export_as_xls2(queryset, fields=None, header=None,  # noqa
                     value = "".join(value)
 
                 sheet.write(rownum + 1, idx + 1, value, _styles[hash(fmt)])
-            except Exception as e:
-                # logger.warning("TODO refine this exception: %s" % e)
-                sheet.write(rownum + 1, idx + 1, smart_str(e), _styles[hash(fmt)])
+            except Exception:
+                sheet.write(rownum + 1, idx + 1, smart_str(value), _styles[hash(fmt)])
 
     book.save(response)
     return response
