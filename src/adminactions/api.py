@@ -18,7 +18,7 @@ from django.utils.encoding import force_text, smart_str, smart_text
 
 from adminactions import compat
 from adminactions.templatetags.actions import get_field_value
-from adminactions.utils import clone_instance, get_field_by_path
+from adminactions.utils import clone_instance, get_field_by_path, get_verbose_name
 
 try:
     # actually supported in admin actions since django >= 1.6
@@ -287,6 +287,14 @@ def export_as_xls2(queryset, fields=None, header=None,  # noqa
 
         return formats
 
+    def _get_field_header_value(model, field):
+        if field.count('.') and isinstance(field, six.string_types):
+            return '{} {}'.format(
+                force_text(get_verbose_name(queryset.model, field.split('.')[0])),
+                force_text(get_verbose_name(queryset.model, field))
+            )
+        return force_text(get_verbose_name(queryset.model, field))
+
     if out is None:
         if filename is None:
             filename = filename or "%s.xls" % queryset.model._meta.verbose_name_plural.lower().replace(" ", "_")
@@ -313,7 +321,7 @@ def export_as_xls2(queryset, fields=None, header=None,  # noqa
     sheet.write(row, 0, u'#', style)
     if header:
         if not isinstance(header, (list, tuple)):
-            header = [force_text(f.verbose_name) for f in queryset.model._meta.fields if f.name in fields]
+            header = [_get_field_header_value(queryset.model, field) for field in fields]
 
         for col, fieldname in enumerate(header, start=1):
             sheet.write(row, col, fieldname, heading_xf)
