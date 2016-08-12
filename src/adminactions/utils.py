@@ -72,14 +72,10 @@ def getattr_or_item(obj, name):
     >>> print(getattr_or_item(p, 'name'))
     perm
     """
-    try:
-        ret = get_attr(obj, name, AttributeError())
-    except AttributeError:
-        try:
-            ret = obj[name]
-        except KeyError:
-            raise AttributeError("%s object has no attribute/item '%s'" % (obj.__class__.__name__, name))
-    return ret
+    if hasattr(obj, '__getitem__') and name in obj:
+        return obj[name]
+    else:
+        return get_attr(obj, name, None)
 
 
 def get_field_value(obj, field, usedisplay=True, raw_callable=False):
